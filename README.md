@@ -89,6 +89,8 @@ ranking to `pgvector`.
 | `/api/billing/portal` | Stripe customer billing portal |
 | `/api/billing/webhook` | Verified Stripe subscription events |
 | `/api/health` | Environment readiness |
+| `/api/account/export` | Download signed-in account data |
+| `/api/account` | Delete the signed-in account |
 
 ## Product architecture
 

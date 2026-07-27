@@ -4,6 +4,8 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { getRequestWorkspace } from "@/lib/workspace";
 import { createEmbeddings, cosineSimilarity } from "@/lib/documents";
+import { planLimits } from "@/lib/plans";
+import { rateLimit } from "@/lib/rate-limit";
 
 const requestSchema = z.object({ message: z.string().trim().min(1).max(4000) });
 
@@ -12,6 +14,9 @@ export async function POST(request: NextRequest) {
   if (!result.success) return NextResponse.json({ error: "A valid message is required." }, { status: 400 });
 
   const workspace = await getRequestWorkspace();
+  const subscription = await db.subscription.findUnique({ where: { workspaceId: workspace.id } });
+  const limit = rateLimit(`ai:${workspace.id}`, planLimits(subscription?.plan).aiActionsPerDay, 24 * 60 * 60 * 1000);
+  if (!limit.allowed) return NextResponse.json({ error: "Your daily AI action limit has been reached." }, { status: 429 });
   const chunks = await db.documentChunk.findMany({
     where: { file: { workspaceId: workspace.id } },
     include: { file: true },

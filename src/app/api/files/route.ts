@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { apiError } from "@/lib/api";
 import { db } from "@/lib/db";
 import { getRequestWorkspace } from "@/lib/workspace";
 import { chunkText, createEmbeddings, extractText } from "@/lib/documents";
-
-const MAX_FILE_BYTES = 10 * 1024 * 1024;
+import { storage } from "@/lib/storage";
+import { planLimits } from "@/lib/plans";
 
 export async function GET() {
   try {
@@ -22,9 +21,12 @@ export async function POST(request: NextRequest) {
     const form = await request.formData();
     const file = form.get("file");
     if (!(file instanceof File)) return NextResponse.json({ error: "A file is required." }, { status: 400 });
-    if (file.size > MAX_FILE_BYTES) return NextResponse.json({ error: "Files must be 10 MB or smaller." }, { status: 413 });
 
     const workspace = await getRequestWorkspace();
+    const subscription = await db.subscription.findUnique({ where: { workspaceId: workspace.id } });
+    const limits = planLimits(subscription?.plan);
+    if (file.size > limits.maxFileBytes) return NextResponse.json({ error: `Your plan supports files up to ${limits.maxFileBytes / 1024 / 1024} MB.` }, { status: 413 });
+    if (await db.fileAsset.count({ where: { workspaceId: workspace.id } }) >= limits.maxFiles) return NextResponse.json({ error: "Your workspace file limit has been reached." }, { status: 402 });
     const extension = path.extname(file.name).toLowerCase();
     const allowed = [".pdf", ".docx", ".txt", ".md"];
     if (!allowed.includes(extension)) return NextResponse.json({ error: "Upload PDF, DOCX, TXT, or Markdown." }, { status: 415 });
@@ -35,10 +37,7 @@ export async function POST(request: NextRequest) {
     });
     assetId = asset.id;
 
-    const root = path.resolve(process.env.LOCAL_UPLOAD_DIR ?? "./uploads");
-    const destination = path.join(root, storageKey);
-    await mkdir(path.dirname(destination), { recursive: true });
-    await writeFile(destination, Buffer.from(await file.arrayBuffer()), { flag: "wx" });
+    await storage().put(storageKey, Buffer.from(await file.arrayBuffer()), file.type || "application/octet-stream");
 
     const text = await extractText(file);
     const chunks = chunkText(text);

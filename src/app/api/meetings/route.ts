@@ -4,6 +4,8 @@ import { z } from "zod";
 import { apiError } from "@/lib/api";
 import { db } from "@/lib/db";
 import { getRequestWorkspace } from "@/lib/workspace";
+import { planLimits } from "@/lib/plans";
+import { rateLimit } from "@/lib/rate-limit";
 
 const meetingInput = z.object({
   title: z.string().trim().min(1).max(200),
@@ -23,6 +25,9 @@ export async function POST(request: NextRequest) {
   try {
     const input = meetingInput.parse(await request.json());
     const workspace = await getRequestWorkspace();
+    const subscription = await db.subscription.findUnique({ where: { workspaceId: workspace.id } });
+    const limit = rateLimit(`ai:${workspace.id}`, planLimits(subscription?.plan).aiActionsPerDay, 24 * 60 * 60 * 1000);
+    if (!limit.allowed) return NextResponse.json({ error: "Your daily AI action limit has been reached." }, { status: 429 });
     let summary = input.transcript.slice(0, 500);
     let actions: string[] = [];
     if (process.env.OPENAI_API_KEY) {
