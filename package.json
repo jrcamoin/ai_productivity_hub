@@ -1,0 +1,41 @@
+{
+  "name": "orbit-ai-productivity-hub",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@auth/prisma-adapter": "^2.10.0",
+    "@prisma/client": "^6.12.0",
+    "googleapis": "^156.0.0",
+    "lucide-react": "^0.468.0",
+    "mammoth": "^1.9.1",
+    "next": "^15.3.4",
+    "next-auth": "^5.0.0-beta.25",
+    "openai": "^5.10.1",
+    "pdf-parse": "^1.1.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "stripe": "^18.3.0",
+    "zod": "^3.25.67"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
+    "@types/node": "^22.15.30",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "@types/pdf-parse": "^1.1.5",
+    "eslint": "^9.28.0",
+    "eslint-config-next": "^15.3.4",
+    "prisma": "^6.12.0",
+    "typescript": "^5.8.3"
+  }
+}
