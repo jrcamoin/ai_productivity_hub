@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chunkText, cosineSimilarity } from "./documents";
+import { chunkText, cosineSimilarity, extractTextBuffer } from "./documents";
 
 describe("document utilities", () => {
   it("chunks with overlap without losing the ending", () => {
@@ -10,5 +10,8 @@ describe("document utilities", () => {
   });
   it("ranks identical vectors above unrelated vectors", () => {
     expect(cosineSimilarity([1, 0], [1, 0])).toBeGreaterThan(cosineSimilarity([1, 0], [0, 1]));
+  });
+  it("extracts UTF-8 text from worker buffers", async () => {
+    await expect(extractTextBuffer(Buffer.from("worker text"), "notes.md", "text/markdown")).resolves.toBe("worker text");
   });
 });

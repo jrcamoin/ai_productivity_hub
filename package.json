@@ -10,9 +10,14 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "db:generate": "prisma generate",
+    "db:generate:production": "node scripts/prepare-production-schema.mjs && prisma generate --schema prisma/schema.production.prisma",
     "db:push": "prisma db push",
+    "db:push:production": "node scripts/prepare-production-schema.mjs && prisma db push --schema prisma/schema.production.prisma",
+    "db:migrate:production": "node scripts/prepare-production-schema.mjs && prisma migrate deploy --schema prisma/schema.production.prisma",
     "db:studio": "prisma studio",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "test:e2e:install": "playwright install chromium"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",
@@ -32,14 +37,20 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
+    "@playwright/test": "^1.62.0",
     "@types/node": "^22.15.30",
+    "@types/pdf-parse": "^1.1.5",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
-    "@types/pdf-parse": "^1.1.5",
     "eslint": "^9.28.0",
     "eslint-config-next": "^15.3.4",
     "prisma": "^6.12.0",
-    "typescript": "^5.8.3"
-    ,"vitest": "^3.2.4"
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  },
+  "overrides": {
+    "gaxios": {
+      "rimraf": "^6.0.1"
+    }
   }
 }

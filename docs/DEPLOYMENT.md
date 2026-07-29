@@ -11,18 +11,18 @@
 
 ## Database
 
-Change `provider = "sqlite"` to `provider = "postgresql"` in
-`prisma/schema.prisma`, point `DATABASE_URL` at a non-production migration
-database, and create the base migration:
+Keep SQLite for local development. Generate the production PostgreSQL schema,
+point `DATABASE_URL` at a non-production database, and apply the base schema:
 
 ```bash
-npx prisma migrate dev --name initial_postgres
-npx prisma migrate deploy
+npm run db:generate:production
+npm run db:migrate:production
 psql "$DATABASE_URL" -f prisma/production/001_pgvector.sql
 ```
 
-Review generated SQL before applying it to production. Backups and point-in-time
-recovery should be enabled before the first customer workspace is created.
+The reviewed baseline lives under `prisma/migrations`. Review all future
+generated SQL. Enable backups and point-in-time recovery before creating the
+first customer workspace.
 
 ## Storage
 
@@ -47,8 +47,18 @@ Gmail scopes can be used by external users.
 
 Set `BACKGROUND_JOBS_URL` and `BACKGROUND_JOBS_SECRET` to a durable job
 ingestion endpoint. The shared job contract supports `google.sync`,
-`document.process`, and `meeting.summarize`. The local app continues inline when
-no provider is configured.
+`document.process`, and `meeting.summarize`. Document jobs are executable through
+`POST /api/internal/jobs`; configure the job provider to deliver the signed job
+envelope to that route. The local app continues inline when no provider is
+configured. Document, Google sync, and meeting-summary worker handlers are
+enabled.
+
+## Rate limits and monitoring
+
+Set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` so rate limits are
+shared across instances. Configure uptime checks against `/api/health`; a `503`
+means a required service is unavailable. Forward JSON application logs to the
+hosting log drain and alert on `api_request_failed`.
 
 ## Stripe
 
@@ -73,3 +83,9 @@ The GitHub CI workflow must pass. Then validate:
 5. Meeting summary and task extraction.
 6. Stripe checkout, portal, and cancellation.
 7. Account export and deletion before public launch.
+8. Anonymous production API requests return `401`.
+9. Replayed Stripe events return success without duplicate processing.
+10. Background document jobs survive a worker retry.
+
+Record the owner, evidence link, and completion date for every item. Do not launch
+with a waived authorization, deletion, backup, or webhook-signature check.

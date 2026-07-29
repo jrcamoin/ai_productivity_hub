@@ -7,3 +7,6 @@ node_modules
 prisma/dev.db
 uploads
 *.tsbuildinfo
+prisma/schema.production.prisma
+playwright-report
+test-results

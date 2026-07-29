@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
 
   const workspace = await getRequestWorkspace();
   const subscription = await db.subscription.findUnique({ where: { workspaceId: workspace.id } });
-  const limit = rateLimit(`ai:${workspace.id}`, planLimits(subscription?.plan).aiActionsPerDay, 24 * 60 * 60 * 1000);
+  const limit = await rateLimit(`ai:${workspace.id}`, planLimits(subscription?.plan).aiActionsPerDay, 24 * 60 * 60 * 1000);
   if (!limit.allowed) return NextResponse.json({ error: "Your daily AI action limit has been reached." }, { status: 429 });
   const chunks = await db.documentChunk.findMany({
     where: { file: { workspaceId: workspace.id } },

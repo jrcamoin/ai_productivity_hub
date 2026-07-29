@@ -3,7 +3,12 @@ import { db, getDemoWorkspace } from "@/lib/db";
 
 export async function getRequestWorkspace() {
   const session = await auth();
-  if (!session?.user?.id) return getDemoWorkspace();
+  if (!session?.user?.id) {
+    if (process.env.NODE_ENV === "production" || process.env.ALLOW_DEMO_WORKSPACE === "false") {
+      throw new WorkspaceAccessError("Sign in to access a workspace.");
+    }
+    return getDemoWorkspace();
+  }
   const membership = await db.membership.findFirst({
     where: { userId: session.user.id },
     include: { workspace: true }
@@ -18,4 +23,8 @@ export async function getRequestWorkspace() {
       subscription: { create: { plan: "free", status: "active" } }
     }
   });
+}
+
+export class WorkspaceAccessError extends Error {
+  status = 401;
 }

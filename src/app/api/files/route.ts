@@ -4,9 +4,10 @@ import { randomUUID } from "node:crypto";
 import { apiError } from "@/lib/api";
 import { db } from "@/lib/db";
 import { getRequestWorkspace } from "@/lib/workspace";
-import { chunkText, createEmbeddings, extractText } from "@/lib/documents";
 import { storage } from "@/lib/storage";
 import { planLimits } from "@/lib/plans";
+import { enqueueJob } from "@/lib/jobs";
+import { processDocument } from "@/lib/document-processing";
 
 export async function GET() {
   try {
@@ -39,14 +40,10 @@ export async function POST(request: NextRequest) {
 
     await storage().put(storageKey, Buffer.from(await file.arrayBuffer()), file.type || "application/octet-stream");
 
-    const text = await extractText(file);
-    const chunks = chunkText(text);
-    const embeddings = await createEmbeddings(chunks);
-    await db.$transaction(chunks.map((content, chunkNo) => db.documentChunk.create({
-      data: { fileId: asset.id, content, chunkNo, metadata: { source: file.name }, embedding: embeddings[chunkNo] ?? undefined }
-    })));
-    const ready = await db.fileAsset.update({ where: { id: asset.id }, data: { status: "READY" } });
-    return NextResponse.json({ file: ready, chunks: chunks.length }, { status: 201 });
+    const queued = await enqueueJob("document.process", { assetId: asset.id, workspaceId: workspace.id });
+    if (queued.queued) return NextResponse.json({ file: asset, jobId: queued.id }, { status: 202 });
+    const processed = await processDocument(asset.id, workspace.id);
+    return NextResponse.json({ file: processed.asset, chunks: processed.chunks }, { status: 201 });
   } catch (error) {
     if (assetId) await db.fileAsset.update({ where: { id: assetId }, data: { status: "FAILED" } }).catch(() => undefined);
     return apiError(error, "The file could not be processed.");

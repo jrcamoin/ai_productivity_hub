@@ -10,6 +10,13 @@ export async function POST(request: NextRequest) {
     if (!signature) return NextResponse.json({ error: "Missing Stripe signature." }, { status: 400 });
     const stripe = stripeClient();
     const event = stripe.webhooks.constructEvent(await request.text(), signature, process.env.STRIPE_WEBHOOK_SECRET);
+    const existing = await db.webhookEvent.findUnique({ where: { id: event.id } });
+    if (existing?.processedAt) return NextResponse.json({ received: true, duplicate: true });
+    await db.webhookEvent.upsert({
+      where: { id: event.id },
+      update: {},
+      create: { id: event.id, provider: "stripe", eventType: event.type }
+    });
     if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.created") {
       const item = event.data.object;
       const workspaceId = item.metadata.workspaceId;
@@ -24,6 +31,14 @@ export async function POST(request: NextRequest) {
         }
       });
     }
+    if (event.type === "customer.subscription.deleted") {
+      const item = event.data.object;
+      await db.subscription.updateMany({
+        where: { stripeSubscriptionId: item.id },
+        data: { plan: "free", status: item.status, currentPeriodEnd: null }
+      });
+    }
+    await db.webhookEvent.update({ where: { id: event.id }, data: { processedAt: new Date() } });
     return NextResponse.json({ received: true });
   } catch (error) { return apiError(error, "Invalid webhook."); }
 }

@@ -201,3 +201,12 @@ model VerificationToken {
   expires    DateTime
   @@unique([identifier, token])
 }
+
+model WebhookEvent {
+  id          String    @id
+  provider    String
+  eventType   String
+  processedAt DateTime?
+  createdAt   DateTime  @default(now())
+  @@index([provider, createdAt])
+}

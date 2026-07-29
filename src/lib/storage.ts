@@ -1,10 +1,12 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, unlink } from "node:fs/promises";
+import { writeFile } from "node:fs/promises";
 import path from "node:path";
-import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 export interface ObjectStorage {
   put(key: string, data: Buffer, contentType: string): Promise<void>;
   get(key: string): Promise<Buffer>;
+  remove(key: string): Promise<void>;
 }
 
 class LocalStorage implements ObjectStorage {
@@ -15,6 +17,11 @@ class LocalStorage implements ObjectStorage {
     await writeFile(destination, data, { flag: "wx" });
   }
   async get(key: string) { return readFile(path.join(this.root, key)); }
+  async remove(key: string) {
+    await unlink(path.join(this.root, key)).catch((error: NodeJS.ErrnoException) => {
+      if (error.code !== "ENOENT") throw error;
+    });
+  }
 }
 
 class S3Storage implements ObjectStorage {
@@ -33,6 +40,9 @@ class S3Storage implements ObjectStorage {
   async get(key: string) {
     const response = await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }));
     return Buffer.from(await response.Body!.transformToByteArray());
+  }
+  async remove(key: string) {
+    await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
   }
 }
 

@@ -18,6 +18,7 @@ notes, tasks, documents, meeting summaries, search, AI chat, and billing.
 npm install
 cp .env.example .env
 npm run db:generate
+npm run db:push
 npm run dev
 ```
 
@@ -110,10 +111,14 @@ Server-side integration boundaries live in `src/lib`. UI features live in
 - Email/calendar: Google OAuth with offline access
 - Hosting: Vercel
 
-## Next milestones
+## Production readiness
 
-1. Add a production Postgres database and object storage.
-2. Move Google synchronization and document processing to durable jobs.
-3. Configure provider credentials and Stripe products.
-4. Add Redis-backed rate limits, observability, and automated browser tests.
-5. Complete privacy, retention, export, and account-deletion workflows.
+The repository includes a generated PostgreSQL schema workflow, S3-compatible
+storage, an authenticated document worker, Upstash-backed distributed rate
+limits, JSON error logs, database-aware health checks, replay-safe Stripe
+webhooks, browser smoke tests, and account storage cleanup.
+
+External launch work remains: provision the managed services, configure provider
+credentials and Stripe products, complete Google OAuth verification, connect the
+durable job delivery endpoint, and execute the release gate in
+`docs/DEPLOYMENT.md`.

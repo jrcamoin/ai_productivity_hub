@@ -12,12 +12,16 @@ export function chunkText(text: string, size = 1200, overlap = 160) {
 
 export async function extractText(file: File) {
   const bytes = Buffer.from(await file.arrayBuffer());
-  if (file.type === "text/plain" || file.name.endsWith(".txt") || file.name.endsWith(".md")) return bytes.toString("utf8");
-  if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
+  return extractTextBuffer(bytes, file.name, file.type);
+}
+
+export async function extractTextBuffer(bytes: Buffer, name: string, mimeType = "") {
+  if (mimeType === "text/plain" || name.endsWith(".txt") || name.endsWith(".md")) return bytes.toString("utf8");
+  if (mimeType === "application/pdf" || name.endsWith(".pdf")) {
     const pdf = (await import("pdf-parse")).default;
     return (await pdf(bytes)).text;
   }
-  if (file.name.endsWith(".docx") || file.type.includes("wordprocessingml")) {
+  if (name.endsWith(".docx") || mimeType.includes("wordprocessingml")) {
     const mammoth = await import("mammoth");
     return (await mammoth.extractRawText({ buffer: bytes })).value;
   }
